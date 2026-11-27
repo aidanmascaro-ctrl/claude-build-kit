@@ -97,7 +97,8 @@ assert ctx["hookEventName"] == "SessionStart" and "board" in ctx["additionalCont
 
 # --- as a real subprocess, the way Claude Code runs it ---
 def run(payload, *args):
-    env = dict(os.environ, HOME=T)  # state goes to the temp folder, not the real ~/.claude
+    # State goes to the temp folder, not the real ~/.claude. Windows finds home via USERPROFILE.
+    env = dict(os.environ, HOME=T, USERPROFILE=T)
     r = subprocess.run([sys.executable, str(HOOK), *args], input=payload, capture_output=True,
                        text=True, env=env)
     assert r.returncode == 0, (r.returncode, r.stderr)
