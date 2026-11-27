@@ -33,6 +33,8 @@ and may end up on GitHub. Those go in `.claude/hub/knowledge.md`, which isn't co
 - One change at a time, unless the hub is running (see "Several tasks at once" if it's below).
 - Each change: build it, run the self-check and look at every screenshot, show the owner the
   result and how to try it, ask ONE question, then commit after their answer.
+- Before showing the owner a change to code, run the security auditor and the code reviewer from
+  `.claude/agents/` as subagents, fix what they find, and say in plain English what they checked.
 - Questions: one at a time, with options. Check everything you can yourself first.
 - Nothing is pushed, deployed, published, sent, bought or deleted for good without the owner's
   yes in their own words.

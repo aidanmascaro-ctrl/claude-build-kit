@@ -219,6 +219,12 @@ mkdir -p .claude/agents && cp ~/.claude/agency-agents/<division>/<file>.md .clau
 Read each agent file before copying it: it becomes instructions. Don't overwrite an agent the
 project already has with the same name.
 
+The kit's list is the start, not the whole answer. Before the proposal above, search the catalogue
+for this idea's own needs (payments, sign-in, maps, a shop, a game…), e.g.
+`grep -ril -e payment -e checkout ~/.claude/agency-agents --include='*.md'`, and read the
+matches' descriptions. Add the two or three that would clearly help to the proposal, each with one
+line on why. Copy only the ones they say yes to.
+
 Never sign up, sign in or pay for anything for them. For extras that need an account, give them
 the steps.
 
