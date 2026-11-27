@@ -43,49 +43,7 @@ your project folder again and say **continue my project**. It picks up exactly w
 Yellow boxes are you; blue boxes are Claude. The first part happens once. After that, every
 project starts at "Describe your idea".
 
-```mermaid
-flowchart LR
-    classDef you fill:#fde68a,stroke:#b45309,color:#1f2937
-    classDef claude fill:#dbeafe,stroke:#1d4ed8,color:#1f2937
-    classDef done fill:#dcfce7,stroke:#15803d,color:#1f2937
-
-    subgraph once["1 · First time only, 10 to 15 min"]
-        direction TB
-        A["Open Claude Code in an<br/>empty folder, paste the link"]:::you
-        B["Checks your computer,<br/>installs missing tools"]:::claude
-        C["Click Install or type your<br/>password when it asks"]:::you
-        D["Installs the kit and starter pack,<br/>helps connect Notion, Drive, GitHub"]:::claude
-        E["Restart Claude Code"]:::you
-        A --> B --> C --> D --> E
-    end
-
-    subgraph kickoff["2 · Every new project"]
-        direction TB
-        F["Describe your idea,<br/>as rough as you like"]:::you
-        G["Asks about your notes,<br/>reads them"]:::claude
-        H["Interviews you,<br/>one question at a time"]:::claude
-        I["Answer, and push back<br/>if it's wrong"]:::you
-        J["Suggests tools, writes the plan:<br/>SPEC.md, DESIGN.md"]:::claude
-        K["Approve the plan"]:::you
-        L["Builds a first version,<br/>checks it with screenshots"]:::claude
-        M["Try it"]:::you
-        F --> G --> H --> I --> J --> K --> L --> M
-    end
-
-    subgraph loop["3 · Then, change by change"]
-        direction TB
-        N["Ask for a change,<br/>or several at once"]:::you
-        O["Builds it, checks it,<br/>runs a security review"]:::claude
-        P{"Shows you the result:<br/>merge it?"}:::claude
-        Q["Saved to your project"]:::done
-        N --> O --> P
-        P -- "Yes" --> Q
-        P -- "Change something" --> O
-        Q --> N
-    end
-
-    once --> kickoff --> loop
-```
+<p align="center"><img src="docs/diagrams/how-you-use-it.png" width="360" alt="How you use it. First time only: you open Claude Code in an empty folder and paste the link; Claude checks your computer and installs missing tools; you click Install or type your password when asked; Claude installs the kit and starter pack and helps connect Notion, Drive and GitHub; you restart. Every new project: you describe your idea; Claude reads your notes and interviews you; you answer; Claude writes the plan; you approve it; Claude builds a first version and checks it; you try it. Then, change by change: you ask for a change; Claude builds and checks it and asks: merge it? Yes saves it; Change something sends it back."></p>
 
 Two phrases worth remembering:
 - **"continue my project"**: after any restart, it picks up exactly where it stopped.
@@ -124,32 +82,7 @@ When you have a list of changes, say "be the hub". That session becomes the proj
 
 Yellow is you, blue is the hub, teal is the task sessions.
 
-```mermaid
-flowchart TB
-    classDef you fill:#fde68a,stroke:#b45309,color:#1f2937
-    classDef claude fill:#dbeafe,stroke:#1d4ed8,color:#1f2937
-    classDef task fill:#ccfbf1,stroke:#0f766e,color:#1f2937
-    classDef done fill:#dcfce7,stroke:#15803d,color:#1f2937
-
-    A["Tell the hub anything:<br/>'fix the menu, add dark mode,<br/>and that export bug'"]:::you
-    B["Writes each one<br/>on the board"]:::claude
-    C["Plans: which files each<br/>touches, what must wait"]:::claude
-
-    subgraph tasks["Task sessions, each in its own copy of the code"]
-        direction LR
-        T1["menu-fix<br/>builds, checks, reviews"]:::task
-        T2["dark-mode<br/>builds, checks, reviews"]:::task
-        T3["export-bug<br/>waits for menu-fix:<br/>same file"]:::task
-    end
-
-    D{"You answer each one:<br/>merge it?"}:::you
-    E["Merges what you approved,<br/>starts what was waiting"]:::claude
-    F["Saved to your project"]:::done
-
-    A --> B --> C --> tasks --> D
-    D -- "Yes" --> E --> F
-    D -- "Change something" --> tasks
-```
+<p align="center"><img src="docs/diagrams/hub.png" width="360" alt="The hub. You tell the hub anything; it writes each item on the board and plans which files each touches and what must wait; task sessions build, check and review in their own copies of the code, and one waits if it needs the same file; you answer each one: merge it?; the hub merges what you approved and starts what was waiting."></p>
 
 In the desktop app the hub opens the task sessions itself, which is the easy way if you don't
 code. In a terminal it gives you one line to paste into a new tab for each task. Every task session
@@ -210,6 +143,9 @@ hooks/          the four guards
 kits/           tools per project type: website, app, video, media-pipeline, research
 EXTRAS.md       optional plugins, agents, connectors and tools, with install lines
 tests/          self-checks for the guards and the installer (python3 install.py --check)
+docs/diagrams/  the two diagrams above: .mmd source (Mermaid) and .png. To change one, edit the
+                .mmd, paste it into mermaid.live and export a PNG
+
 ```
 
 ## Credits

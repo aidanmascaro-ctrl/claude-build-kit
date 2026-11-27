@@ -1,0 +1,24 @@
+flowchart TB
+    classDef you fill:#fde68a,stroke:#b45309,color:#1f2937
+    classDef claude fill:#dbeafe,stroke:#1d4ed8,color:#1f2937
+    classDef task fill:#ccfbf1,stroke:#0f766e,color:#1f2937
+    classDef done fill:#dcfce7,stroke:#15803d,color:#1f2937
+
+    A["Tell the hub anything:<br/>'fix the menu, add dark mode,<br/>and that export bug'"]:::you
+    B["Writes each one<br/>on the board"]:::claude
+    C["Plans: which files each<br/>touches, what must wait"]:::claude
+
+    subgraph tasks["Task sessions, each in its own copy of the code"]
+        direction LR
+        T1["menu-fix<br/>builds, checks, reviews"]:::task
+        T2["dark-mode<br/>builds, checks, reviews"]:::task
+        T3["export-bug<br/>waits for menu-fix:<br/>same file"]:::task
+    end
+
+    D{"You answer each one:<br/>merge it?"}:::you
+    E["Merges what you approved,<br/>starts what was waiting"]:::claude
+    F["Saved to your project"]:::done
+
+    A --> B --> C --> tasks --> D
+    D -- "Yes" --> E --> F
+    D -- "Change something" --> tasks
