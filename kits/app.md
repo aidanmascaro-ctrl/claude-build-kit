@@ -24,8 +24,7 @@ share and update.
 ## Plugins (see EXTRAS.md)
 
 - **Already in the kit:** `unslop` for polishing screens.
-- **Optional:** `ui-ux-pro-max` (has SwiftUI, React Native and Flutter guidance), `ponytail`,
-  `mattpocock-skills`.
+- **Optional:** `ui-ux-pro-max` (has SwiftUI, React Native and Flutter guidance), `mattpocock-skills`.
 
 ## Tools
 

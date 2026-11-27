@@ -70,6 +70,11 @@ tells you what each piece is before installing it, and all of it can be removed
   screen looks designed.*
 - **playwright** (plugin): lets Claude open your website in a browser and click through it. *So it
   checks its own work before showing you.*
+- **ponytail** (plugin): makes Claude keep every change as small and simple as it can, and end each
+  reply with what it skipped or didn't check. *So there's less that can break, and you know what's
+  left.* It's on in every chat: say "normal mode" to switch it off for one chat, or ask Claude to
+  remove it. It also shows a small bar above where you type with what each task used (the cost
+  there is an estimate, not a bill); type `/ponytail band` to hide it.
 - **Agency Agents:** a catalogue of about 280 specialist roles. *Each project uses only the few it
   needs.*
 
@@ -208,5 +213,5 @@ docs/diagrams/  the two diagrams above: .mmd source (Mermaid) and .png. To chang
 The destructive-command guard is a fresh, smaller take on the idea behind gstack's `/careful`.
 The `unslop` skill is by Damir Sokolovsky ([@heydamir](https://x.com/heydamir)), licensed
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and included unchanged; the MIT licence
-below doesn't cover it. The agents come from [Agency Agents](https://github.com/msitarzewski/agency-agents). The plugins in
-EXTRAS.md belong to their authors. Everything else in this kit is MIT licensed: use it, change it, share it.
+below doesn't cover it. The agents come from [Agency Agents](https://github.com/msitarzewski/agency-agents). The starter-pack
+plugins and those in EXTRAS.md belong to their authors. Everything else in this kit is MIT licensed: use it, change it, share it.

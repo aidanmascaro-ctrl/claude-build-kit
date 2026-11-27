@@ -20,7 +20,7 @@ Sites and web apps: landing pages, portfolios, shops, dashboards, small SaaS app
   skill polishes each screen once it works.
 - **Optional:** `playwright` (lets Claude click around the site by hand, beyond the scripted
   self-check), `claude-seo` (if search traffic matters), `cloudflare` (if it's hosted there),
-  `mattpocock-skills`, `ponytail`.
+  `mattpocock-skills`.
 
 ## Tools
 

@@ -149,6 +149,9 @@ Say: "Plugins are add-ons that give me extra skills. These ones help with almost
 - **mattpocock-skills:** lets me interview you properly about your idea, and test and fix code.
 - **ui-ux-pro-max:** a design library, so anything with a screen looks designed, not generic.
 - **playwright:** lets me open and click through websites to check my own work.
+- **ponytail:** keeps my changes small and simple, so there's less that can break, and I end each
+  reply by saying what I skipped or didn't check. It's on in every chat; say "normal mode" to
+  switch it off for that chat.
 - **Agency Agents:** a catalogue of about 280 specialist roles (a designer, a security reviewer,
   and so on). A project only uses the few it needs.
 
@@ -160,14 +163,17 @@ claude plugin install mattpocock-skills@claude-plugins-official
 claude plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill
 claude plugin install ui-ux-pro-max@ui-ux-pro-max-skill
 claude plugin install playwright@claude-plugins-official
+claude plugin marketplace add DietrichGebert/ponytail
+claude plugin install ponytail@ponytail
 git clone --depth 1 https://github.com/msitarzewski/agency-agents ~/.claude/agency-agents
 claude plugin list
 ```
 
-`ui-ux-pro-max` comes from its author's own marketplace: glance at its README on GitHub first and
-say in a line what it adds. Check `claude plugin list` shows all three. If one fails, tell them,
-carry on without it, and note it in the profile. If the command-line tool asks them to sign in,
-ask them to run `claude` once in Terminal and sign in with their Claude account.
+`ui-ux-pro-max` and `ponytail` come from their authors' own marketplaces: glance at each README on
+GitHub first and say in a line what it adds. Ponytail runs on Node.js from step 2. Check
+`claude plugin list` shows all four. If one fails, tell them, carry on without it, and note it in
+the profile. If the command-line tool asks them to sign in, ask them to run `claude` once in
+Terminal and sign in with their Claude account.
 
 Mention that more extras (SEO, video tools, research tools) get suggested later, only if their
 project needs them.
@@ -223,7 +229,7 @@ alone). Later sessions read it, so they don't repeat setup or ask the same quest
 - First setup: <date>
 - Computer: <Mac | Windows | Linux>
 - Codes: <not at all | a little | developer>
-- Installed: <basics installed today>, starter pack: <which plugins>, Agency Agents: <yes | no>
+- Installed: <basics installed today>, starter pack: <which of mattpocock-skills, ui-ux-pro-max, playwright, ponytail>, Agency Agents: <yes | no>
 - Connected: <Notion, Google Drive, GitHub | none>
 - Didn't work: <anything that failed, or nothing>
 - Projects started: 0
@@ -260,7 +266,9 @@ python3 ~/.claude/build-kit/install.py --check
 ```
 (On Windows: `python` instead of `python3`, and `$HOME` for `~` in PowerShell.)
 Tell them in two or three lines what changed (`git -C ~/.claude/build-kit log --oneline -10`), and
-mention anything in the profile's "Didn't work" line that they might want to try again. Then read
+mention anything in the profile's "Didn't work" line that they might want to try again. If step 4's
+starter pack has a plugin their profile doesn't mention, offer it in one line, install it on a yes,
+and note their answer in the profile either way, so you only ask once. Then read
 `~/.claude/skills/new-project/SKILL.md` and follow it from step 0.
 
 To remove everything later: `python3 ~/.claude/build-kit/install.py --uninstall`, then delete the

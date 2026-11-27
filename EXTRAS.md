@@ -2,7 +2,7 @@
 
 Everything here is optional. The `new-project` skill suggests the ones that fit your project (from
 its kit in `kits/`) and installs only what you say yes to. You can also ask Claude any time:
-"install ponytail from the build kit's extras".
+"install claude-seo from the build kit's extras".
 
 All of these belong to their own authors. Read what a plugin does before installing it: plugins,
 skills and agents become instructions for Claude. For plugins from someone's own marketplace,
@@ -39,9 +39,13 @@ in yourself; Claude never asks for your password.
 
 ## Plugins
 
+The first four (`ponytail`, `mattpocock-skills`, `playwright`, `ui-ux-pro-max`) are the **starter
+pack**, with Agency Agents: first-time setup installs them for everyone, unless you skipped it.
+They're listed here so you can add one later.
+
 | Plugin | What it does | Good for | Install |
 | --- | --- | --- | --- |
-| `ponytail` | "Lazy senior developer" mode: the smallest change that fully works, plus `/ponytail-review` | Any code project | `claude plugin marketplace add DietrichGebert/ponytail` then `claude plugin install ponytail@ponytail` |
+| `ponytail` | "Lazy senior developer" mode: keeps every change small and simple, ends each reply with what it skipped, plus `/ponytail-review`. On in every chat; say "normal mode" to switch it off for one chat | Every project (starter pack) | `claude plugin marketplace add DietrichGebert/ponytail` then `claude plugin install ponytail@ponytail` |
 | `mattpocock-skills` | `grilling` (the pushback interview), `tdd`, `prototype`, `diagnosing-bugs`, `code-review` | Any code project | `claude plugin install mattpocock-skills@claude-plugins-official` |
 | `playwright` | Drives a real browser, so Claude can click through your site and screenshot it | Websites, web apps | `claude plugin install playwright@claude-plugins-official` |
 | `ui-ux-pro-max` | Searchable design database (styles, palettes, font pairings, UX rules) that produces a design system | Anything with a screen | `claude plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill` then `claude plugin install ui-ux-pro-max@ui-ux-pro-max-skill` |

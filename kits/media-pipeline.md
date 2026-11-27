@@ -16,8 +16,7 @@ processing, audio clean-up, tools that turn one kind of file into another.
 
 ## Plugins (see EXTRAS.md)
 
-- **Optional:** `remotion` or `hyperframes` if it renders motion graphics, `ponytail`,
-  `mattpocock-skills`.
+- **Optional:** `remotion` or `hyperframes` if it renders motion graphics, `mattpocock-skills`.
 
 ## Self-check
 

@@ -16,7 +16,6 @@ HyperFrames) or edited in an editor that Claude can drive (DaVinci Resolve Studi
 
 - **Video from code:** `remotion` (React-based video) or `hyperframes` (HTML-based video: captions,
   explainers, product launches).
-- **Optional:** `ponytail`.
 
 ## Tools
 
