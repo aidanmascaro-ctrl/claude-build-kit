@@ -105,7 +105,7 @@ Check everything again and tell them it's all there.
 
 ### Step 3. Install the build kit
 
-Say: "Now the build kit itself: two skills that tell me how to run a project with you, and four
+Say: "Now the build kit itself: three skills that tell me how to run a project with you, and four
 guards that keep your work safe."
 
 ```bash
@@ -125,8 +125,8 @@ should say `ok`; if one fails, fix it (usually by running the installer again) b
 If the installer skipped a skill because one with that name already exists, tell them which.
 
 Then explain what they now have, in plain words:
-- **Two skills:** one for starting a project (from idea to first version), one for building
-  several changes at once.
+- **Three skills:** one for starting a project (from idea to first version), one for building
+  several changes at once, and `unslop`, which makes screens look designed rather than generic.
 - **Secret guards:** stop me from ever showing a password or key in the chat, or saving one into
   a file that could end up online.
 - **Delete guard:** stops anything that would wipe their files, and asks them first before

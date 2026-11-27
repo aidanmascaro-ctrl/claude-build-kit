@@ -16,7 +16,8 @@ Sites and web apps: landing pages, portfolios, shops, dashboards, small SaaS app
 
 ## Plugins (see EXTRAS.md for install lines)
 
-- **Recommended:** `ui-ux-pro-max` (a design system instead of defaults).
+- **Recommended:** `ui-ux-pro-max` (a design system instead of defaults). The kit's own `unslop`
+  skill polishes each screen once it works.
 - **Optional:** `playwright` (lets Claude click around the site by hand, beyond the scripted
   self-check), `claude-seo` (if search traffic matters), `cloudflare` (if it's hosted there),
   `mattpocock-skills`, `ponytail`.

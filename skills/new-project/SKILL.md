@@ -258,7 +258,8 @@ the steps.
 - **`DESIGN.md`,** for anything with a screen: a real design system, not defaults. Colours, type,
   spacing, the main components and their states, tone of voice, and what to avoid. Use
   `ui-ux-pro-max` if it's installed. Avoid the generic AI look: purple gradients, glowing blobs,
-  emoji labels, everything centred in cards.
+  emoji labels, everything centred in cards. Once the screens work, run the `unslop` skill on
+  them.
 
 Show each one briefly (the key lines, not the whole file) and ask *Looks right* / *Change
 something*. Commit both.

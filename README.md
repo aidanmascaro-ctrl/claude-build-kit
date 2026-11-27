@@ -81,6 +81,7 @@ before changing them.
 | --- | --- |
 | `new-project` skill | The whole flow above, from idea to first version |
 | `hub-workflow` skill | Building several changes at once with a hub and task sessions |
+| `unslop` skill | Turns generic, AI-looking screens into a designed interface with its own character |
 | Secret-leak guards | Stop Claude from printing a password or API key into the chat, or writing one into a file that could end up on GitHub |
 | Destructive-command guard | Blocks wiping your home folder or a disk; asks before deleting folders, `git reset --hard`, force-pushing and dropping database tables |
 | Context guard | When a chat gets long, Claude writes a handoff note and carries on in a fresh session, instead of losing detail to an automatic summary |
@@ -121,7 +122,7 @@ the ones that fit each project.
 ```
 SETUP.md        what Claude does when you paste the link
 install.py      installs, checks, updates and removes the kit
-skills/         new-project and hub-workflow
+skills/         new-project, hub-workflow and unslop
 hooks/          the four guards
 kits/           tools per project type: website, app, video, media-pipeline, research
 EXTRAS.md       optional plugins, agents, connectors and tools, with install lines
@@ -131,5 +132,7 @@ tests/          self-checks for the guards and the installer (python3 install.py
 ## Credits
 
 The destructive-command guard is a fresh, smaller take on the idea behind gstack's `/careful`.
-The agents come from [Agency Agents](https://github.com/msitarzewski/agency-agents). The plugins in
-EXTRAS.md belong to their authors. This kit is MIT licensed: use it, change it, share it.
+The `unslop` skill is by Damir Sokolovsky ([@heydamir](https://x.com/heydamir)), licensed
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and included unchanged; the MIT licence
+below doesn't cover it. The agents come from [Agency Agents](https://github.com/msitarzewski/agency-agents). The plugins in
+EXTRAS.md belong to their authors. Everything else in this kit is MIT licensed: use it, change it, share it.

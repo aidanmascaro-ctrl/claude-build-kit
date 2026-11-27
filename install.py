@@ -7,7 +7,7 @@
     python3 install.py --uninstall         remove everything this script added
 
 What it touches:
-  ~/.claude/skills/new-project, ~/.claude/skills/hub-workflow   (each marked with a .build-kit file)
+  ~/.claude/skills/new-project, hub-workflow, unslop             (each marked with a .build-kit file)
   ~/.claude/hooks/build-kit/                                     (the four guard scripts)
   ~/.claude/settings.json                                        (hook entries; backed up first)
 
@@ -25,7 +25,7 @@ import sys
 import time
 
 KIT = pathlib.Path(__file__).resolve().parent
-SKILLS = ["new-project", "hub-workflow"]
+SKILLS = ["new-project", "hub-workflow", "unslop"]
 HOOK_FILES = ["block-destructive.py", "block-secret-dumps.py", "block-secret-writes.py", "context-guard.py"]
 MARKER = ".build-kit"
 DEFAULT_HANDOFF = 120_000
