@@ -125,7 +125,7 @@ When you have a list of changes, say "be the hub". That session becomes the proj
 Yellow is you, blue is the hub, teal is the task sessions.
 
 ```mermaid
-flowchart LR
+flowchart TB
     classDef you fill:#fde68a,stroke:#b45309,color:#1f2937
     classDef claude fill:#dbeafe,stroke:#1d4ed8,color:#1f2937
     classDef task fill:#ccfbf1,stroke:#0f766e,color:#1f2937
@@ -136,7 +136,7 @@ flowchart LR
     C["Plans: which files each<br/>touches, what must wait"]:::claude
 
     subgraph tasks["Task sessions, each in its own copy of the code"]
-        direction TB
+        direction LR
         T1["menu-fix<br/>builds, checks, reviews"]:::task
         T2["dark-mode<br/>builds, checks, reviews"]:::task
         T3["export-bug<br/>waits for menu-fix:<br/>same file"]:::task
