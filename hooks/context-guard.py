@@ -158,7 +158,7 @@ def on_session_start(p: dict):
 
 def main() -> None:
     try:
-        p = json.load(sys.stdin)
+        p = json.load(sys.stdin.buffer)  # bytes, so Windows' default text encoding can't garble it
     except ValueError:
         sys.exit(0)
     event = p.get("hook_event_name")

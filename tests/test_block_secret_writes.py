@@ -39,6 +39,8 @@ MUST_BLOCK = [
     (HANDOFF, f"db url: {PG_URL}"),
     ("/Users/a/my-app/docs/NOTES.md", PRIVKEY),
     ("/Users/a/my-app/lib/x.ts", f'const t = "{GOOGLE}"'),
+    (r"C:\Users\sam\my-app\notes.md", f"token: {GH_PAT}"),
+    (r"C:\Users\sam\my-app\src\config.ts", f'const key = "{STRIPE}"'),
 ]
 
 MUST_ALLOW = [
@@ -55,6 +57,9 @@ MUST_ALLOW = [
     # A credentials file is the right home for a credential.
     ("/Users/a/.secrets.env", f"export STRIPE_SECRET_KEY={STRIPE}"),
     ("/Users/a/my-app/.env.local", f"ANTHROPIC_API_KEY={ANTHROPIC}"),
+    # Windows paths arrive with backslashes.
+    (r"C:\Users\sam\my-app\.env.local", f"ANTHROPIC_API_KEY={ANTHROPIC}"),
+    (r"C:\Users\sam\.secrets.env", f"export STRIPE_SECRET_KEY={STRIPE}"),
 ]
 
 failures = []

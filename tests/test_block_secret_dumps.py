@@ -26,6 +26,30 @@ MUST_BLOCK = [
     'sqlite3 ~/.myapp/storage.sqlite "select access_token from accounts;"',
     "cat ~/.ssh/id_rsa",
     "cat ~/.aws/credentials",
+    # Windows: PowerShell, cmd and backslash paths
+    "type .env",
+    r"type C:\Users\sam\my-app\.env.local",
+    "Get-Content .env",
+    r"gc ~\.aws\credentials",
+    "more .env.production",
+    r"Select-String KEY C:\Users\sam\my-app\.env",
+    "findstr KEY .env",
+    "Get-ChildItem env:",
+    "gci env:",
+    "gci Env:*KEY*",
+    "dir env:",
+    "ls Env:",
+    "Get-ChildItem -Path Env:",
+    "Get-Item env:STRIPE_SECRET_KEY",
+    "[Environment]::GetEnvironmentVariables()",
+    "set",
+    "set | more",
+    "cmd /c set",
+    "echo $env:STRIPE_SECRET_KEY",
+    "Write-Output $env:ANTHROPIC_API_KEY",
+    "Write-Host \"key: $env:GITHUB_TOKEN\"",
+    "echo %STRIPE_SECRET_KEY%",
+    "$env:GITHUB_PERSONAL_ACCESS_TOKEN",
 ]
 
 MUST_ALLOW = [
@@ -49,6 +73,20 @@ MUST_ALLOW = [
     # tokens_in / tokens_cache_read are usage counts, not credentials.
     'sqlite3 ~/.myapp/storage.sqlite "select name, tokens_in from usage_log limit 3;"',
     'sqlite3 ~/.myapp/storage.sqlite "select sum(tokens_cache_read) from usage_log;"',
+    # Windows: everyday commands that look close but print nothing secret
+    "set -euo pipefail",
+    "set -e; npm test",
+    "dir $env:TEMP",
+    r"Get-ChildItem C:\Users\sam\my-app",
+    "type python",
+    "git gc",
+    "Get-Content README.md",
+    "gc package.json | Select-String version",
+    'Write-Output "done"',
+    '$env:NODE_ENV = "production"; npm run build',
+    r"cut -d= -f1 C:\Users\sam\my-app\.env",
+    'Invoke-RestMethod -Headers @{Authorization="Bearer $env:STRIPE_SECRET_KEY"} https://api.stripe.com/v1/charges',
+    "file --mime-type .env",
 ]
 
 failures = []
@@ -61,7 +99,7 @@ for cmd in MUST_ALLOW:
 
 total = len(MUST_BLOCK) + len(MUST_ALLOW)
 if failures:
-    print(f"FAIL — {len(failures)}/{total} wrong:")
+    print(f"FAIL: {len(failures)}/{total} wrong:")
     print("\n".join(failures))
     sys.exit(1)
-print(f"PASS — {len(MUST_BLOCK)} blocked, {len(MUST_ALLOW)} allowed, {total}/{total} correct")
+print(f"PASS: {len(MUST_BLOCK)} blocked, {len(MUST_ALLOW)} allowed, {total}/{total} correct")

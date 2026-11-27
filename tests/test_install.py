@@ -2,8 +2,9 @@
 """Self-check for install.py. Run: python3 tests/test_install.py
 
 Installs into a throwaway CLAUDE_CONFIG_DIR that already has someone's own hooks and a skill of
-their own, then checks: their things survive, running it twice adds nothing twice, and uninstall
-puts settings.json back exactly as it was.
+their own, then checks: their things survive, running it twice adds nothing twice, an installed
+guard runs the way Claude Code starts it, and uninstall puts settings.json back exactly as it was.
+The folder name has a space in it, to catch quoting mistakes (Windows user names often have one).
 """
 import json
 import os
@@ -13,7 +14,7 @@ import sys
 import tempfile
 
 KIT = pathlib.Path(__file__).resolve().parent.parent
-T = pathlib.Path(tempfile.mkdtemp())
+T = pathlib.Path(tempfile.mkdtemp(prefix="build kit "))
 ENV = dict(os.environ, CLAUDE_CONFIG_DIR=str(T))
 
 THEIRS = {
@@ -38,7 +39,17 @@ def settings():
 
 
 def commands(s):
-    return [h["command"] for groups in s.get("hooks", {}).values() for g in groups for h in g["hooks"]]
+    """Each hook as one line. On Windows the script and its options are in "args" (no shell)."""
+    return [" ".join([h["command"], *h.get("args", [])])
+            for groups in s.get("hooks", {}).values() for g in groups for h in g["hooks"]]
+
+
+def run_hook(h, payload):
+    """Start a hook the way Claude Code does: with no shell when it has "args", else with sh -c."""
+    argv = [h["command"], *h["args"]] if "args" in h else ["sh", "-c", h["command"]]
+    r = subprocess.run(argv, input=json.dumps(payload).encode(), capture_output=True)
+    assert r.returncode == 0, (argv, r.stderr)
+    return json.loads(r.stdout or b"{}")
 
 
 code, out = run()
@@ -56,6 +67,14 @@ assert all((T / "hooks" / "build-kit" / n).exists() for n in
            ["block-destructive.py", "block-secret-dumps.py", "block-secret-writes.py", "context-guard.py"])
 assert list(T.glob("settings.json.bak-build-kit-*")), "a backup was made"
 
+# The installed delete guard, started from settings.json, stops a home wipe from both shell tools.
+guard = next(h for g in s["hooks"]["PreToolUse"] if g.get("matcher") == "Bash|PowerShell"
+             for h in g["hooks"] if "block-destructive" in json.dumps(h))
+for tool, wipe in [("Bash", "rm -rf ~"), ("PowerShell", "Remove-Item -Recurse -Force ~")]:
+    out = run_hook(guard, {"tool_name": tool, "tool_input": {"command": wipe}, "cwd": str(KIT)})
+    assert out["hookSpecificOutput"]["permissionDecision"] == "deny", (tool, out)
+assert run_hook(guard, {"tool_name": "Bash", "tool_input": {"command": "git status"}, "cwd": str(KIT)}) == {}
+
 code, out = run("--handoff-at", "300000")
 assert code == 0, out
 kit_cmds = [c for c in commands(settings()) if "build-kit" in c]
@@ -64,6 +83,11 @@ assert any("--handoff-at 300000" in c for c in kit_cmds), "a re-run updates the 
 
 assert run("--handoff-at", "lots")[0] != 0
 assert run("--handoff-at")[0] != 0
+before = (T / "settings.json").read_bytes()
+code, out = run("--help")
+assert code == 0 and "--uninstall" in out, "--help explains and installs nothing"
+assert run("--uninstal")[0] == 2, "a typo stops instead of installing"
+assert (T / "settings.json").read_bytes() == before
 
 code, out = run("--uninstall")
 assert code == 0, out
@@ -77,4 +101,5 @@ code, out = run()
 assert code != 0 and "isn't valid JSON" in out, out
 assert (T / "settings.json").read_text() == "{ not json", "a broken settings file is never touched"
 
-print("PASS: install keeps their settings and skills, is safe to re-run, uninstall restores settings")
+print("PASS: install keeps their settings and skills, is safe to re-run, the installed guard runs, "
+      "uninstall restores settings")

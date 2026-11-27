@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Install, update, check or remove the build kit in your Claude Code folder (~/.claude).
+On Windows, type `python` where this says `python3`.
 
     python3 install.py                     install or update (safe to run again)
     python3 install.py --handoff-at 300000 same, with a later handoff point (for 1M-token windows)
@@ -29,6 +30,8 @@ SKILLS = ["new-project", "hub-workflow", "unslop"]
 HOOK_FILES = ["block-destructive.py", "block-secret-dumps.py", "block-secret-writes.py", "context-guard.py"]
 MARKER = ".build-kit"
 DEFAULT_HANDOFF = 120_000
+WINDOWS = os.name == "nt"
+PY = "python" if WINDOWS else "python3"  # what to type, for messages
 
 
 def claude_dir() -> pathlib.Path:
@@ -39,21 +42,29 @@ def hook_dir() -> pathlib.Path:
     return claude_dir() / "hooks" / "build-kit"
 
 
-def ours(command: str) -> bool:
-    return "hooks/build-kit/" in command.replace("\\", "/")
+def ours(hook: dict) -> bool:
+    args = hook.get("args")
+    words = [str(hook.get("command", ""))] + ([str(a) for a in args] if isinstance(args, list) else [])
+    return any("hooks/build-kit/" in w.replace("\\", "/") for w in words)
 
 
-def registrations(handoff_at: int) -> list[tuple[str, str | None, str]]:
-    """(event, matcher, command) for every hook this kit adds."""
-    # `python3` from PATH survives Python upgrades; a pinned path (e.g. a Homebrew keg) can vanish
-    # and silently switch the guards off. Windows often has no `python3`, so it gets the full path.
-    python = f'"{sys.executable}"' if os.name == "nt" else "python3"
-
+def registrations(handoff_at: int) -> list[tuple[str, str | None, dict]]:
+    """(event, matcher, how to run it) for every hook this kit adds."""
     def cmd(name, *args):
-        return " ".join([python, f'"{hook_dir() / name}"', *args])
+        script = str(hook_dir() / name)
+        if WINDOWS:
+            # Windows often has no `python3`, and the shell that runs hooks there may be Git Bash or
+            # PowerShell, which quote differently. So no shell at all: Claude Code starts this exact
+            # Python with these arguments ("exec form"). Re-running the installer after a Python
+            # upgrade points it at the new one.
+            return {"command": sys.executable, "args": [script, *args]}
+        # `python3` from PATH survives Python upgrades; a pinned path (e.g. a Homebrew keg) can vanish
+        # and silently switch the guards off.
+        return {"command": " ".join(["python3", f'"{script}"', *args])}
+    # On Windows, Claude Code may run commands with its PowerShell tool instead of Bash.
     return [
-        ("PreToolUse", "Bash", cmd("block-secret-dumps.py")),
-        ("PreToolUse", "Bash", cmd("block-destructive.py")),
+        ("PreToolUse", "Bash|PowerShell", cmd("block-secret-dumps.py")),
+        ("PreToolUse", "Bash|PowerShell", cmd("block-destructive.py")),
         ("PreToolUse", "Write|Edit", cmd("block-secret-writes.py")),
         ("Stop", None, cmd("context-guard.py", "--handoff-at", str(handoff_at))),
         ("PreCompact", None, cmd("context-guard.py")),
@@ -67,7 +78,7 @@ def load_settings(path: pathlib.Path) -> dict:
     if not path.exists():
         return {}
     try:
-        data = json.loads(path.read_text() or "{}")
+        data = json.loads(path.read_text(encoding="utf-8") or "{}")  # Windows would guess another encoding
     except ValueError as e:
         sys.exit(f"Stopped: {path} isn't valid JSON ({e}). Nothing was changed. Fix it, then run again.")
     if not isinstance(data, dict):
@@ -90,7 +101,7 @@ def without_ours(settings: dict) -> dict:
             if not isinstance(g, dict) or not isinstance(g.get("hooks"), list):
                 new_groups.append(g)
                 continue
-            inner = [h for h in g["hooks"] if not (isinstance(h, dict) and ours(str(h.get("command", ""))))]
+            inner = [h for h in g["hooks"] if not (isinstance(h, dict) and ours(h))]
             if inner:
                 new_groups.append({**g, "hooks": inner})
         if new_groups:
@@ -106,8 +117,8 @@ def without_ours(settings: dict) -> dict:
 def with_ours(settings: dict, handoff_at: int) -> dict:
     out = without_ours(settings)
     hooks = dict(out.get("hooks") or {})
-    for event, matcher, command in registrations(handoff_at):
-        group = {"hooks": [{"type": "command", "command": command, "timeout": 10}]}
+    for event, matcher, run in registrations(handoff_at):
+        group = {"hooks": [{"type": "command", **run, "timeout": 10}]}
         if matcher:
             group = {"matcher": matcher, **group}
         hooks[event] = list(hooks.get(event, [])) + [group]
@@ -122,7 +133,7 @@ def write_settings(path: pathlib.Path, new: dict) -> None:
         print(f"  backed up settings.json to {backup.name}")
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(new, indent=2) + "\n")
+    tmp.write_text(json.dumps(new, indent=2) + "\n", encoding="utf-8")
     tmp.replace(path)  # atomic, so a crash can't leave a half-written settings file
 
 
@@ -192,16 +203,19 @@ def check() -> bool:
         ok &= same
     hooks = load_settings(home / "settings.json").get("hooks") or {}
     found = sum(1 for groups in hooks.values() if isinstance(groups, list) for g in groups
-                if isinstance(g, dict) for h in g.get("hooks") or [] if isinstance(h, dict)
-                and ours(str(h.get("command", ""))))
+                if isinstance(g, dict) for h in g.get("hooks") or [] if isinstance(h, dict) and ours(h))
     want = len(registrations(DEFAULT_HANDOFF))
     print(f"  {'ok  ' if found == want else 'FAIL'} {found} of {want} guard entries in settings.json")
     ok &= found == want
-    print("All good." if ok else "Something's wrong: run `python3 install.py` again, then this check.")
+    print("All good." if ok else f"Something's wrong: run `{PY} install.py` again, then this check.")
     return ok
 
 
 def main(argv: list[str]) -> None:
+    known = {"--uninstall", "--check", "--handoff-at"}
+    if any(a not in known and not (a.isdigit() and argv[i - 1:i] == ["--handoff-at"]) for i, a in enumerate(argv)):
+        print(__doc__)  # --help, or a typo: say what it does rather than install anyway
+        sys.exit(0 if argv[0] in ("-h", "--help") else 2)
     if "--uninstall" in argv:
         uninstall()
     elif "--check" in argv:

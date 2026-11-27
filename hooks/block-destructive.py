@@ -14,6 +14,10 @@ Commands are read in order, like the shell: `cd` and `X=...` are tracked, so
 `S=/private/tmp/x; rm -rf "$S"` and `cd "$S" && rm -rf shots` are judged on
 the real path. Temp folders and build output are always fine to delete.
 
+Works the same on Mac, Linux and Windows. Windows paths (`C:\\x`, `C:/x`, Git Bash's `/c/x`)
+are turned into one spelling first, and PowerShell and cmd delete commands are judged too
+(`Remove-Item -Recurse`, `rd /s`, `del /s`, `Format-Volume`).
+
 Tuned on thousands of real agent commands, so everyday work doesn't trip it.
 Exit 0 always. The decision goes out as permissionDecision JSON on stdout.
 Malformed input is let through: not this hook's call to make.
@@ -22,29 +26,45 @@ from __future__ import annotations
 
 import json
 import os
+import posixpath
 import re
 import shlex
+import shutil
 import sys
 
 SEPARATORS = {";", "&&", "||", "|", "&", ";;", "|&"}
 WRAPPERS = {"sudo", "command", "nohup", "time", "xargs", "exec", "nice", "caffeinate",
             "then", "do", "else", "!", "env"}
 SHELLS = {"bash", "sh", "zsh", "eval"}
+WIN_SHELLS = {"powershell", "pwsh", "cmd"}
 
-HOME = os.path.expanduser("~")
-SYSTEM = {"/", "/Users", "/System", "/Library", "/Applications", "/usr", "/bin", "/sbin",
-          "/etc", "/var", "/private", "/opt", "/Volumes", "/cores"}
+
+def norm(p: str) -> str:
+    """One spelling on every OS: `C:\\x`, `C:/x` and `/c/x` all become `/c/x`."""
+    p = p.replace("\\", "/")
+    return "/" + p[0].lower() + p[2:] if re.match(r"[A-Za-z]:(?:/|$)", p) else p
+
+
+HOME = norm(os.path.expanduser("~"))
+# Compared in lower case: Mac and Windows disks ignore case, so /users is /Users.
+SYSTEM = {"/", "/users", "/system", "/library", "/applications", "/usr", "/bin", "/sbin",
+          "/etc", "/var", "/private", "/opt", "/volumes", "/cores"}
+# A bare drive (/c) and Windows' own folders on it.
+WIN_SYSTEM = re.compile(r"/[a-z](?:/(?:windows|users|programdata|program files(?: \(x86\))?))?", re.I)
+HOME_DIR = re.compile(r"(?:/[a-z])?/(?:users|home)/[^/]+", re.I)  # anyone's home: /Users/x, /home/x, /c/Users/x
 # Machine-made folders: anything inside them is regenerable.
 REBUILDABLE_TREES = {"node_modules", "build", ".build", ".next", ".nuxt", ".svelte-kit", ".turbo",
                      ".cache", ".parcel-cache", "__pycache__", ".pytest_cache", "DerivedData",
                      "target", ".venv", "venv", ".playwright-mcp"}
 # Common names that can also hold real work (renders in `out/`), so only the folder itself.
 REBUILDABLE_NAMES = {"dist", "out", "coverage"}
-TEMP_ROOTS = ("/tmp/", "/private/tmp/", "/var/folders/", "/private/var/folders/", "$TMPDIR", "${TMPDIR}",
-              "$CLAUDE_JOB_DIR", "${CLAUDE_JOB_DIR}", HOME + "/.claude/jobs/", "$(mktemp",
-              "$(getconf DARWIN_USER_TEMP_DIR")
+# Lower case, like the paths they're compared with. `$TEMP/` keeps its slash so `$TEMPLATES` isn't one.
+TEMP_ROOTS = ("/tmp/", "/private/tmp/", "/var/folders/", "/private/var/folders/", "$tmpdir", "${tmpdir}",
+              "$claude_job_dir", "${claude_job_dir}", "$(mktemp", "$(getconf darwin_user_temp_dir",
+              "$temp/", "${temp}", "$tmp/", "${tmp}", "%temp%", "%tmp%", "$env:temp/", "$env:tmp/")
 ASSIGN = re.compile(r"[A-Za-z_]\w*=")
-VAR = re.compile(r"\$\{?([A-Za-z_]\w*)\}?")
+# $NAME and ${NAME}, plus Windows' %NAME% (cmd) and $env:NAME (PowerShell).
+VAR = re.compile(r"%(\w+)%|\$env:(\w+)|\$\{?([A-Za-z_]\w*)\}?", re.I)
 
 DB_CLIENT = re.compile(r"\b(?:psql|sqlite3?|mysql|mariadb|duckdb|supabase|pg_\w+)\b")
 SQL_DESTROY = re.compile(
@@ -71,8 +91,16 @@ ASK_PREFIXES = [
 ]
 DISK_ERASE = {"erasedisk", "erasevolume", "zerodisk", "secureerase", "partitiondisk", "reformat",
               "deletecontainer", "deletevolume"}
+WIN_DISK_ERASE = {"format-volume", "clear-disk", "initialize-disk", "remove-partition"}
+# PowerShell's Remove-Item and its aliases, and cmd's delete commands. rd/rmdir only delete
+# an empty folder unless they're recursive.
+REMOVERS = {"rm", "remove-item", "ri", "del", "erase", "rd", "rmdir"}
+CMD_FLAGS = {"del", "erase", "rd", "rmdir"}  # take cmd-style flags: rd /s /q
+RM_SHORT = re.compile(r"-[dfiIPrRvWx]+")      # rm's own short flags, bundled: -rf, -Rfv
 
-TRASH_TIP = " `trash <path>` moves it to the Bin instead, which can be undone."
+# Windows has no `trash` command, and older Macs don't either: then the advice is to ask.
+TRASH_TIP = (" `trash <path>` moves it to the Bin instead, which can be undone." if shutil.which("trash")
+             else " Ask the user first, or move it somewhere they can check before it's gone for good.")
 
 
 # ---------- parsing ----------
@@ -108,8 +136,11 @@ def commands(cmd: str) -> tuple[list[list[str]], bool]:
 
 
 def expand(text: str, env: dict[str, str]) -> str:
+    def value(m):
+        win = m.group(1) or m.group(2)  # Windows names ignore case: $env:userprofile
+        return env.get(win.upper() if win else m.group(3), m.group(0))
     for _ in range(5):  # nested: D=$S/fake, S=/tmp/x
-        new = VAR.sub(lambda m: env.get(m.group(1), m.group(0)), text)
+        new = VAR.sub(value, text)
         if new == text:
             break
         text = new
@@ -118,14 +149,17 @@ def expand(text: str, env: dict[str, str]) -> str:
 
 def resolve(path: str, env: dict[str, str]) -> str:
     """Best guess at the absolute path a target means. Unknown variables stay as `$NAME`."""
-    p = expand(path, env)
+    p = norm(expand(path, env))
     if p == "~" or p.startswith("~/"):
-        p = env["HOME"] + p[1:]
-    if not p.startswith(("/", "$")) and "PWD" in env:
-        p = os.path.join(env["PWD"], p)
+        p = norm(env["HOME"]) + p[1:]
+    if not p.startswith(("/", "$", "%")) and "PWD" in env:
+        p = posixpath.join(env["PWD"], p)
     if p.endswith("/*"):
         p = p[:-2] or "/"
-    return os.path.normpath(p) if p.startswith("/") else p.rstrip("/")
+    return posixpath.normpath(p) if p.startswith("/") else p.rstrip("/")
+
+
+CD = {"cd", "set-location", "sl", "chdir"}
 
 
 def track(argv: list[str], env: dict[str, str]) -> None:
@@ -141,8 +175,8 @@ def track(argv: list[str], env: dict[str, str]) -> None:
     if argv[0] in ("export", "readonly", "declare", "local"):
         argv = argv[1:]
     elif not all(ASSIGN.match(t) for t in argv):
-        argv = argv if argv[0] == "cd" else []  # `HOME=x cmd` only lasts for that one command
-    if argv and argv[0] == "cd":
+        argv = argv if argv[0].lower() in CD else []  # `HOME=x cmd` only lasts for that one command
+    if argv and argv[0].lower() in CD:
         target = next((a for a in argv[1:] if not a.startswith("-")), "~")
         new = resolve(target, env)
         if new.startswith("/"):
@@ -169,29 +203,40 @@ def strip_wrappers(argv: list[str]) -> list[str]:
 # ---------- rules ----------
 
 def disposable(path: str) -> bool:
-    parts = path.split("/")
-    return (path.startswith(TEMP_ROOTS) or any(p in REBUILDABLE_TREES for p in parts)
-            or parts[-1] in REBUILDABLE_NAMES)
+    parts, low = path.split("/"), path.lower()
+    return (low.startswith(TEMP_ROOTS) or low.startswith(HOME.lower() + "/.claude/jobs/")
+            or "/appdata/local/temp/" in low  # Windows' temp folder
+            or any(p in REBUILDABLE_TREES for p in parts) or parts[-1] in REBUILDABLE_NAMES)
 
 
-def check_rm(args: list[str], env: dict[str, str]) -> tuple[str, str] | None:
+def recursive_flag(f: str) -> bool:
+    low = f.lower()
+    return (low in ("--recursive", "/s") or bool(RM_SHORT.fullmatch(f) and "r" in low)
+            or (len(low) >= 4 and "-recurse".startswith(low)))  # PowerShell: -Recurse, -rec
+
+
+def check_rm(name: str, args: list[str], env: dict[str, str]) -> tuple[str, str] | None:
     flags, targets, end = [], [], False
     for a in args:
         if not end and a == "--":
             end = True
-        elif not end and a.startswith("-"):
+        elif not end and (a.startswith("-") or (name in CMD_FLAGS and re.fullmatch(r"/[a-zA-Z](?::\S*)?", a))):
             flags.append(a)
         else:
             targets.append(a)
-    recursive = any(f == "--recursive" or (not f.startswith("--") and re.search("[rR]", f)) for f in flags)
+    recursive = any(recursive_flag(f) for f in flags)
+    if name in ("rd", "rmdir") and not recursive:
+        return None  # only removes an empty folder
+    homes = {norm(HOME).lower(), norm(env["HOME"]).lower()}
     verdict = None
     for t in targets:
         p = resolve(t, env)
         if disposable(p):
             continue
-        if p in SYSTEM or p == env["HOME"] or p == HOME or re.fullmatch(r"/(?:Users|home)/[^/]+", p):
+        low = p.lower()
+        if low in SYSTEM or low in homes or WIN_SYSTEM.fullmatch(p) or HOME_DIR.fullmatch(p):
             return "deny", f"deletes {t}, a home or system folder.{TRASH_TIP}"
-        if recursive and os.path.dirname(p) in (HOME, env["HOME"]):
+        if recursive and posixpath.dirname(low) in homes:
             return "deny", f"deletes {t}, a whole top-level folder in your home.{TRASH_TIP}"
         if p.startswith("/Volumes/"):
             verdict = ("ask", f"deletes {t} on an external drive.{TRASH_TIP}")
@@ -203,7 +248,7 @@ def check_rm(args: list[str], env: dict[str, str]) -> tuple[str, str] | None:
 def broad(paths: list[str]) -> bool:
     """A whole tree or folder, not one named file. shortcut: guesses "folder" from a missing
     file extension, so `Makefile` asks too; check the real path if that gets noisy."""
-    return any(p in (".", ":/", "*") or p.endswith("/") or "." not in os.path.basename(p) for p in paths)
+    return any(p in (".", ":/", "*") or p.endswith("/") or "." not in posixpath.basename(p) for p in paths)
 
 
 def check_git(args: list[str], env: dict[str, str]) -> str | None:
@@ -235,19 +280,38 @@ def check_git(args: list[str], env: dict[str, str]) -> str | None:
     return None
 
 
+def inner_script(name: str, args: list[str]) -> str:
+    """The command a shell is told to run: bash -c "...", eval ..., powershell -Command ..., cmd /c ...
+    shortcut: powershell -EncodedCommand and -File aren't looked inside."""
+    if name == "eval":
+        return " ".join(args)
+    if name in SHELLS:
+        return args[args.index("-c") + 1] if "-c" in args[:-1] else ""
+    for i, a in enumerate(args):
+        low = a.lower()
+        if (name == "cmd" and low in ("/c", "//c", "/k", "//k")) or (
+                name != "cmd" and len(low) >= 2 and "-command".startswith(low)):
+            rest = args[i + 1:]
+            # cmd keeps the quotes round each word (cmd /c rd /s "C:\\Program Files"), and drops the
+            # outer pair of a single one (cmd /c "rd /s x"). PowerShell joins its words and re-reads them.
+            return " ".join(shlex.quote(a) for a in rest) if name == "cmd" and len(rest) > 1 else " ".join(rest)
+    return ""
+
+
 def judge(argv: list[str], env: dict[str, str], depth: int) -> tuple[str, str] | None:
     piped = argv[0] == "xargs"
     argv = strip_wrappers(argv)
     if not argv:
         return None
-    name, args = os.path.basename(argv[0]), argv[1:]
-    if piped and name == "rm" and not any(not a.startswith("-") for a in args):
-        args = args + ["files piped in by xargs"]  # targets come from stdin: judge them as unknown
-    if name in SHELLS and depth < 3:  # bash -c "...", eval "..."
-        script = " ".join(args) if name == "eval" else (args[args.index("-c") + 1] if "-c" in args[:-1] else "")
-        return assess(script, env.get("PWD"), depth + 1) if script else None
-    if name == "rm":
-        return check_rm(args, env)
+    name, args = re.sub(r"\.exe$", "", posixpath.basename(norm(argv[0])).lower()), argv[1:]
+    if (piped and name == "rm") or (name in REMOVERS - {"rm"}):
+        if not any(not a.startswith("-") for a in args):  # targets come from a pipe: judge them as unknown
+            args = args + ["files piped in"]
+    if name in SHELLS | WIN_SHELLS and depth < 3:
+        script = inner_script(name, args)
+        return assess(script, env.get("PWD"), depth + 1, "bash" if name in SHELLS else name) if script else None
+    if name in REMOVERS:
+        return check_rm(name, args, env)
     if name == "git":
         why = check_git(args, env)
         return ("ask", why) if why else None
@@ -257,6 +321,8 @@ def judge(argv: list[str], env: dict[str, str], depth: int) -> tuple[str, str] |
         return "deny", "writes straight onto a disk device"
     if name == "diskutil" and any(a.lower() in DISK_ERASE for a in args):
         return "deny", "erases or repartitions a disk"
+    if name in WIN_DISK_ERASE or (name == "format" and any(re.fullmatch(r"[A-Za-z]:/?", a) for a in args)):
+        return "deny", "erases or formats a disk"
     if name == "supabase" and args[:2] == ["db", "reset"] and any(a.startswith(("--linked", "--db-url")) for a in args):
         return "ask", "resets a remote Supabase database"
     words = tuple([name] + [a for a in args if not a.startswith("-")])
@@ -266,12 +332,15 @@ def judge(argv: list[str], env: dict[str, str], depth: int) -> tuple[str, str] |
     return None
 
 
-def assess(cmd: str, cwd: str | None = None, depth: int = 0) -> tuple[str, str] | None:
-    """Return ("deny"|"ask", reason) for the worst part of a command, or None."""
+def assess(cmd: str, cwd: str | None = None, depth: int = 0, shell: str = "bash") -> tuple[str, str] | None:
+    """Return ("deny"|"ask", reason) for the worst part of a command, or None.
+    shell is "bash" (also Git Bash on Windows), "powershell" or "cmd"."""
+    if shell != "bash":
+        cmd = cmd.replace("\\", "/")  # a backslash is a folder separator there, never an escape
     found = []
     if DB_CLIENT.search(cmd) and SQL_DESTROY.search(cmd) and not LOCAL_DB.search(cmd):
         found.append(("ask", "runs SQL that drops, truncates or empties a table"))
-    env = {"HOME": HOME, **({"PWD": cwd} if cwd else {})}
+    env = {"HOME": HOME, "USERPROFILE": HOME, **({"PWD": norm(cwd)} if cwd else {})}
     cmds, reliable = commands(cmd)
     for argv in cmds:
         track(argv, env)
@@ -286,12 +355,12 @@ def assess(cmd: str, cwd: str | None = None, depth: int = 0) -> tuple[str, str] 
 
 def main() -> None:
     try:
-        payload = json.load(sys.stdin)
+        payload = json.load(sys.stdin.buffer)  # bytes, so Windows' default text encoding can't garble it
     except (json.JSONDecodeError, ValueError):
         sys.exit(0)
 
     cmd = (payload.get("tool_input") or {}).get("command") or ""
-    verdict = assess(cmd, payload.get("cwd"))
+    verdict = assess(cmd, payload.get("cwd"), shell="powershell" if payload.get("tool_name") == "PowerShell" else "bash")
     if not verdict:
         sys.exit(0)
 

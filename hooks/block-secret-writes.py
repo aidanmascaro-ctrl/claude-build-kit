@@ -18,8 +18,9 @@ import re
 import sys
 
 # Files that legitimately store credentials — a secret belongs in these.
+# Windows paths arrive with backslashes, so either separator counts.
 SECRET_STORE = re.compile(
-    r"(?:^|/)(?:\.env(?:\.[\w.-]+)?|[\w.-]+\.env|\.secrets\.env|\.npmrc|\.pgpass|\.netrc"
+    r"(?:^|[/\\])(?:\.env(?:\.[\w.-]+)?|[\w.-]+\.env|\.secrets\.env|\.npmrc|\.pgpass|\.netrc"
     r"|id_rsa|id_ed25519|credentials(?:\.json)?)$"
 )
 
@@ -63,7 +64,7 @@ def find(content: str) -> tuple[str, int] | None:
 
 def main() -> None:
     try:
-        payload = json.load(sys.stdin)
+        payload = json.load(sys.stdin.buffer)  # bytes, so Windows' default text encoding can't garble it
     except (json.JSONDecodeError, ValueError):
         sys.exit(0)
 

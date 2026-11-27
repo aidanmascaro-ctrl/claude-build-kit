@@ -1,0 +1,43 @@
+# Runs every self-check, then a real install, check and uninstall, on Windows, Mac and Linux.
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        python: ["3.13"]
+        include:
+          - os: ubuntu-latest
+            python: "3.9"   # the oldest Python a Mac ships with
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash   # Git Bash on Windows, like Claude Code's Bash tool
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Self-checks
+        run: |
+          fail=0
+          for t in tests/test_*.py; do echo "== $t"; python "$t" || fail=1; done
+          exit $fail
+
+      - name: Install, check and remove the kit
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude config
+        run: |
+          python install.py
+          python install.py --check
+          python install.py --uninstall
+          test ! -e "$CLAUDE_CONFIG_DIR/hooks/build-kit"
+          python -c "import json, os; s = json.load(open(os.path.join(os.environ['CLAUDE_CONFIG_DIR'], 'settings.json'))); assert 'hooks' not in s, s"

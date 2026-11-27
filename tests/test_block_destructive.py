@@ -111,22 +111,105 @@ MUST_ALLOW = [
     ("git status", PROJECT),
 ]
 
-failures = []
-for cmd, cwd in MUST_DENY:
-    v = guard.assess(cmd, cwd)
-    if not v or v[0] != "deny":
-        failures.append(f"  NOT BLOCKED ({v}): {cmd!r}")
-for cmd, cwd in MUST_ASK:
-    v = guard.assess(cmd, cwd)
-    if not v or v[0] != "ask":
-        failures.append(f"  NOT ASKED ({v}): {cmd!r}")
-for cmd, cwd in MUST_ALLOW:
-    if (v := guard.assess(cmd, cwd)) is not None:
-        failures.append(f"  FALSE ALARM ({v[0]}: {v[1][:80]}): {cmd!r}")
+# ---------- Windows, with a fake Windows home, so these run on any computer ----------
+# (command, cwd, shell). "bash" is Git Bash, which Claude Code's Bash tool uses on Windows;
+# "powershell" is its PowerShell tool. cwd arrives as C:\\... or /c/..., so both are used.
+WIN_HOME = "C:\\Users\\sam"
+WIN_PROJECT = WIN_HOME + "\\Documents\\my-app"
+GIT_BASH_PROJECT = "/c/Users/sam/Documents/my-app"
 
-total = len(MUST_DENY) + len(MUST_ASK) + len(MUST_ALLOW)
+WIN_MUST_DENY = [
+    ("rm -rf /c/Users/sam", GIT_BASH_PROJECT, "bash"),
+    ('rm -rf "C:\\Users\\sam"', WIN_PROJECT, "bash"),
+    ("rm -rf C:/Users/sam/Documents", WIN_PROJECT, "bash"),
+    ("rm -rf ~", WIN_PROJECT, "bash"),
+    ("rm -rf ~/AppData", GIT_BASH_PROJECT, "bash"),
+    ('rm -rf "$USERPROFILE"', WIN_PROJECT, "bash"),
+    ("rm -rf /c/Users/alex", WIN_PROJECT, "bash"),                 # someone else's home
+    ("rm -rf 'C:\\'", WIN_PROJECT, "bash"),                         # a whole drive
+    ("rm -rf /c/*", WIN_PROJECT, "bash"),
+    ('rm -rf "C:\\Windows"', WIN_PROJECT, "bash"),
+    ('rm -rf "/c/Program Files"', WIN_PROJECT, "bash"),
+    ('rm -rf "C:\\Program Files (x86)"', WIN_PROJECT, "bash"),
+    ("rm -rf /c/Users", WIN_PROJECT, "bash"),
+    ("rm -rf Documents", WIN_HOME, "bash"),                          # relative to a C:\\ cwd
+    ("rm -rf ..", WIN_HOME + "\\Documents", "bash"),
+    ('cmd //c "rd /s /q C:\\Users\\sam"', WIN_PROJECT, "bash"),
+    ('powershell -Command "Remove-Item -Recurse -Force C:\\Users\\sam\\Documents"', WIN_PROJECT, "bash"),
+    ("Remove-Item -Recurse -Force C:\\Users\\sam", WIN_PROJECT, "powershell"),
+    ("Remove-Item -Recurse -Force $env:USERPROFILE\\Documents", WIN_PROJECT, "powershell"),
+    ("Remove-Item -Path ~\\Desktop -Recurse", WIN_PROJECT, "powershell"),
+    ("rm -r ~\\Documents", WIN_PROJECT, "powershell"),           # rm is Remove-Item there
+    ('Remove-Item -Recurse -Force "C:\\Program Files"', WIN_PROJECT, "powershell"),
+    ("Set-Location C:\\Users\\sam; Remove-Item -Recurse Music", WIN_PROJECT, "powershell"),
+    ("cmd /c rd /s /q C:\\Users\\sam", WIN_PROJECT, "powershell"),
+    ('cmd /c rd /s /q "C:\\Program Files"', WIN_PROJECT, "powershell"),
+    ("del /s /q C:\\Users\\sam", WIN_PROJECT, "powershell"),
+    ("Format-Volume -DriveLetter D", WIN_PROJECT, "powershell"),
+    ("Clear-Disk -Number 1 -RemoveData", WIN_PROJECT, "powershell"),
+    ("format D: /q", WIN_PROJECT, "powershell"),
+]
+
+WIN_MUST_ASK = [
+    ('rm -rf "C:\\Users\\sam\\Documents\\my-app\\src"', WIN_PROJECT, "bash"),
+    ('rm -rf "$TEMPLATES"', WIN_PROJECT, "bash"),                  # not $TEMP
+    ("Remove-Item -Recurse src", WIN_PROJECT, "powershell"),
+    ("Remove-Item -rec -Force .", WIN_PROJECT, "powershell"),
+    ("rd /s /q src", WIN_PROJECT, "powershell"),
+    ("del /s *.log", WIN_PROJECT, "powershell"),
+    ("Get-ChildItem C:\\Users\\sam | Remove-Item -Recurse -Force", WIN_PROJECT, "powershell"),
+    ("git reset --hard", WIN_PROJECT, "powershell"),
+    ("git push --force", WIN_PROJECT, "powershell"),
+]
+
+WIN_MUST_ALLOW = [
+    ("rm -rf node_modules dist", WIN_PROJECT, "bash"),
+    ('rm -rf "$TEMP/x"', WIN_PROJECT, "bash"),
+    ("rm -rf /tmp/x", WIN_PROJECT, "bash"),                         # Git Bash's /tmp is the temp folder
+    ('rm -rf "C:\\Users\\sam\\AppData\\Local\\Temp\\shots"', WIN_PROJECT, "bash"),
+    ('rm -rf "C:\\Users\\sam\\Documents\\my-app\\dist"', WIN_PROJECT, "bash"),
+    ("cd /c/Users/sam/Documents/my-app && rm -rf build", WIN_HOME, "bash"),
+    ("rm -rf .next", GIT_BASH_PROJECT, "bash"),
+    ("rm notes.txt", WIN_PROJECT, "bash"),
+    ("Remove-Item -Recurse -Force node_modules", WIN_PROJECT, "powershell"),
+    ("Remove-Item -Recurse -Force $env:TEMP\\my-test", WIN_PROJECT, "powershell"),
+    ("Remove-Item -Recurse -Force %TEMP%\\my-test", WIN_PROJECT, "powershell"),
+    ('Remove-Item -Recurse "C:\\Users\\sam\\AppData\\Local\\Temp\\x"', WIN_PROJECT, "powershell"),
+    ("Set-Location C:\\Users\\sam\\Documents\\my-app; Remove-Item -Recurse .next", WIN_HOME, "powershell"),
+    ("Remove-Item notes.txt", WIN_PROJECT, "powershell"),
+    ("rm -Force notes.txt", WIN_PROJECT, "powershell"),            # -Force isn't -r
+    ("rmdir empty-folder", WIN_PROJECT, "powershell"),             # no /s: empty folders only
+    ('cmd /c "del /q notes.txt"', WIN_PROJECT, "powershell"),
+    ("Get-ChildItem -Recurse src | Select-String TODO", WIN_PROJECT, "powershell"),
+    ("npm run build", WIN_PROJECT, "powershell"),
+    ("git status", WIN_PROJECT, "powershell"),
+]
+
+failures = []
+
+
+def run(cases, want):
+    for cmd, cwd, *shell in cases:
+        v = guard.assess(cmd, cwd, shell=shell[0] if shell else "bash")
+        got = v[0] if v else "allow"
+        if got != want:
+            failures.append(f"  {want.upper()} EXPECTED, GOT {got} ({v[1][:70] if v else ''}): {cmd!r}")
+
+
+run(MUST_DENY, "deny")
+run(MUST_ASK, "ask")
+run(MUST_ALLOW, "allow")
+real_home, guard.HOME = guard.HOME, WIN_HOME
+run(WIN_MUST_DENY, "deny")
+run(WIN_MUST_ASK, "ask")
+run(WIN_MUST_ALLOW, "allow")
+guard.HOME = real_home
+
+deny, ask, allow = (len(MUST_DENY) + len(WIN_MUST_DENY), len(MUST_ASK) + len(WIN_MUST_ASK),
+                    len(MUST_ALLOW) + len(WIN_MUST_ALLOW))
+total = deny + ask + allow
 if failures:
-    print(f"FAIL — {len(failures)}/{total} wrong:")
+    print(f"FAIL: {len(failures)}/{total} wrong:")
     print("\n".join(failures))
     sys.exit(1)
-print(f"PASS — {len(MUST_DENY)} blocked, {len(MUST_ASK)} asked, {len(MUST_ALLOW)} allowed, {total}/{total} correct")
+print(f"PASS: {deny} blocked, {ask} asked, {allow} allowed, {total}/{total} correct (Mac, Linux and Windows)")
