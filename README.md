@@ -38,6 +38,58 @@ remembers your setup and keeps the explanations shorter as you get used to it.
 If Claude ever asks you to restart (for example after installing a plugin), open Claude Code in
 your project folder again and say **continue my project**. It picks up exactly where it stopped.
 
+## How you use it, at a glance
+
+Yellow boxes are you; blue boxes are Claude. The first part happens once. After that, every
+project starts at "Describe your idea".
+
+```mermaid
+flowchart TD
+    classDef you fill:#fde68a,stroke:#b45309,color:#1f2937
+    classDef claude fill:#dbeafe,stroke:#1d4ed8,color:#1f2937
+    classDef done fill:#dcfce7,stroke:#15803d,color:#1f2937
+
+    subgraph once["1 · First time only, about 10 to 15 minutes"]
+        A["Open Claude Code in an empty folder<br/>and paste the link"]:::you
+        B["Checks your computer and<br/>installs missing tools"]:::claude
+        C["Click Install, or type your password,<br/>when it asks"]:::you
+        D["Installs the kit and starter pack,<br/>helps you connect Notion, Drive, GitHub"]:::claude
+        E["Restart Claude Code"]:::you
+        A --> B --> C --> D --> E
+    end
+
+    subgraph kickoff["2 · Every new project"]
+        F["Describe your idea,<br/>as rough as you like"]:::you
+        G["Asks about your notes<br/>and reads them"]:::claude
+        H["Interviews you,<br/>one question at a time"]:::claude
+        I["Answer, and push back<br/>if it's got something wrong"]:::you
+        J["Suggests tools, writes the plan:<br/>SPEC.md and DESIGN.md"]:::claude
+        K["Approve the plan"]:::you
+        L["Builds a first version and<br/>checks it with screenshots"]:::claude
+        M["Try it"]:::you
+        F --> G --> H --> I --> J --> K --> L --> M
+    end
+
+    subgraph loop["3 · Then, change by change"]
+        N["Ask for a change,<br/>or several at once"]:::you
+        O["Builds it, checks it,<br/>runs a security review"]:::claude
+        P{"Shows you the result and asks<br/>one question: merge it?"}:::claude
+        Q["Saved to your project"]:::done
+        N --> O --> P
+        P -- "Yes" --> Q
+        P -- "Change something" --> O
+        Q --> N
+    end
+
+    E --> F
+    M --> N
+```
+
+Two phrases worth remembering:
+- **"continue my project"**: after any restart, it picks up exactly where it stopped.
+- **"be the hub"**: once the first version works, it builds several changes at the same time.
+  Each one still comes back to you with its own single question.
+
 ## What happens next
 
 1. **It gets to know you.** One question: how much you code, so it pitches everything right.
