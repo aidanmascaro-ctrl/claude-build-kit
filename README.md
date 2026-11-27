@@ -122,6 +122,35 @@ When you have a list of changes, say "be the hub". That session becomes the proj
   changed. Merge it?";
 - the hub merges what you approve.
 
+Yellow is you, blue is the hub, teal is the task sessions.
+
+```mermaid
+flowchart LR
+    classDef you fill:#fde68a,stroke:#b45309,color:#1f2937
+    classDef claude fill:#dbeafe,stroke:#1d4ed8,color:#1f2937
+    classDef task fill:#ccfbf1,stroke:#0f766e,color:#1f2937
+    classDef done fill:#dcfce7,stroke:#15803d,color:#1f2937
+
+    A["Tell the hub anything:<br/>'fix the menu, add dark mode,<br/>and that export bug'"]:::you
+    B["Writes each one<br/>on the board"]:::claude
+    C["Plans: which files each<br/>touches, what must wait"]:::claude
+
+    subgraph tasks["Task sessions, each in its own copy of the code"]
+        direction TB
+        T1["menu-fix<br/>builds, checks, reviews"]:::task
+        T2["dark-mode<br/>builds, checks, reviews"]:::task
+        T3["export-bug<br/>waits for menu-fix:<br/>same file"]:::task
+    end
+
+    D{"You answer each one:<br/>merge it?"}:::you
+    E["Merges what you approved,<br/>starts what was waiting"]:::claude
+    F["Saved to your project"]:::done
+
+    A --> B --> C --> tasks --> D
+    D -- "Yes" --> E --> F
+    D -- "Change something" --> tasks
+```
+
 In the desktop app the hub opens the task sessions itself, which is the easy way if you don't
 code. In a terminal it gives you one line to paste into a new tab for each task. Every task session
 uses your plan's usage, so on smaller plans keep it to two at a time.
