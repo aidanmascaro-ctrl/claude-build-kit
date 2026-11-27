@@ -133,7 +133,8 @@ The project's own way wins: CLAUDE.md overrides these defaults. Never re-scaffol
      ```bash
      cd "<full path to the worktree>" && claude --append-system-prompt-file .claude/agents/<agent>.md "You are task session <name>. Read <full path to the brief> and follow it."
      ```
-     (Leave out `--append-system-prompt-file …` if the task has no role.) This adds the agent's
+     (Leave out `--append-system-prompt-file …` if the task has no role. In Windows PowerShell 5.1,
+     the default on many PCs, `&&` doesn't work: put `;` in its place.) This adds the agent's
      role to a normal session, which keeps every tool, subagents included. Don't use
      `claude --agent`: it applies the agent's tool limits.
 3. **Check it started** (`ListAgents`, the app's session list, or the owner says so), then update

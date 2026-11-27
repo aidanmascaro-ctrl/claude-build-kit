@@ -91,7 +91,8 @@ suggests only the ones that fit your project.
 ## What you need
 
 - **A paid Claude plan.** Claude Code needs one. Bigger plans let you build more at once.
-- **A Mac, Windows PC or Linux computer.** It's been tested most on a Mac.
+- **A Mac, Windows PC or Linux computer.** The safety guards and the installer are tested on all
+  three every time the kit changes. The full first-time setup has been tried on a Mac.
 - **Nothing else to buy.** The kit, the starter pack and the basic tools are all free.
 - **Accounts only if you want them.** Some extras need one, like GitHub (free) to back up and
   share projects, or a hosting service to put a website online. You create those yourself: Claude
@@ -178,7 +179,8 @@ uses your plan's usage, so on smaller plans keep it to two at a time.
 ## Updating and removing
 
 - **Update:** tell Claude "update my build kit".
-- **Check it's working:** `python3 ~/.claude/build-kit/install.py --check`
+- **Check it's working:** `python3 ~/.claude/build-kit/install.py --check` (on Windows, type
+  `python` instead of `python3`)
 - **Remove it:** ask Claude to "remove the build kit", or run
   `python3 ~/.claude/build-kit/install.py --uninstall`. That takes out the skills, the guards and
   their settings, and leaves your own settings and skills alone. Then delete the

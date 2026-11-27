@@ -44,11 +44,12 @@ If they're a developer, you can be brisker for the rest of setup. Keep their ans
 
 ### Step 2. Check the computer
 
-Work out the system (`uname -s`: `Darwin` is a Mac, `Linux` is Linux; if that fails, it's
-Windows). Then check each tool:
+Work out the system (`uname -s`: `Darwin` is a Mac, `Linux` is Linux, and `MINGW…` or `MSYS…`
+is Windows; if `uname` isn't found at all, it's Windows too). Then check each tool:
 
 ```bash
 git --version; python3 --version; node --version; claude --version
+python --version   # Windows: use this one. There, `python3` is often a stub that opens the Microsoft Store
 brew --version || /opt/homebrew/bin/brew --version || /usr/local/bin/brew --version   # Mac only
 ```
 
@@ -96,6 +97,14 @@ powershell -c "irm https://claude.ai/install.ps1 | iex"
 New tools may only be found after a restart of Claude Code. If so, finish what you can, then ask
 them to restart and say "continue setup".
 
+For the rest of setup on Windows:
+- Type `python` where a step says `python3`.
+- If you're running a command in PowerShell rather than Git Bash, write `$HOME` where a step says
+  `~`. Older PowerShell hands `~` to other programs as-is, so `git clone … ~/.claude/build-kit`
+  would make a folder literally called `~`.
+- Where a step says **Terminal**, they open the **Terminal** app (or **PowerShell** on older
+  Windows): press the Windows key, type *Terminal*, press Enter. "Return" is the Enter key.
+
 **On Linux**
 Give them one line for their package manager to paste into a terminal (it needs their password),
 e.g. `sudo apt install git python3 nodejs npm`, and run the Claude Code installer yourself as on a
@@ -119,7 +128,7 @@ Then:
 python3 ~/.claude/build-kit/install.py
 python3 ~/.claude/build-kit/install.py --check
 ```
-On Windows the command may be `python` instead of `python3`. If you know this session has a
+On Windows, type `python` instead of `python3` (and `$HOME` for `~` in PowerShell). If you know this session has a
 1M-token context window, add `--handoff-at 300000` to the first command. Every line of the check
 should say `ok`; if one fails, fix it (usually by running the installer again) before going on.
 If the installer skipped a skill because one with that name already exists, tell them which.
@@ -249,6 +258,7 @@ git -C ~/.claude/build-kit pull --ff-only
 python3 ~/.claude/build-kit/install.py
 python3 ~/.claude/build-kit/install.py --check
 ```
+(On Windows: `python` instead of `python3`, and `$HOME` for `~` in PowerShell.)
 Tell them in two or three lines what changed (`git -C ~/.claude/build-kit log --oneline -10`), and
 mention anything in the profile's "Didn't work" line that they might want to try again. Then read
 `~/.claude/skills/new-project/SKILL.md` and follow it from step 0.

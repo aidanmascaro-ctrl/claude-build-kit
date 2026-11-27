@@ -35,7 +35,7 @@ from the step above. Don't ask again what's answered here.
 
 If the context guard fires during the kickoff, this note is your handoff file: write it here, not
 in a dated file. Then tell them exactly what to do, in one short message: "Close this and open Claude Code in
-<folder> (in a terminal: `cd <folder> && claude`), then say: continue my project." In the desktop
+<folder> (in a terminal: `cd "<folder>"`, then `claude`), then say: continue my project." In the desktop
 app, if you can start a fresh session or move this one to the folder yourself, do that instead.
 
 **Starting a session:** if `.claude/hub/handoffs/kickoff.md` exists and its first line names a
